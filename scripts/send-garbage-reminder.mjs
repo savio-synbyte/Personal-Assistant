@@ -4,6 +4,7 @@
 //   node scripts/send-garbage-reminder.mjs [--dry-run]
 // Env:
 //   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID  - required unless --dry-run
+//                                            (TELEGRAM_CHAT_ID may be a comma-separated list to notify several people)
 //   FAKE_TODAY=YYYY-MM-DD                 - override "today" for testing
 //   SKIP_TIME_WINDOW_CHECK=1              - bypass the ~9pm ET guard (used by manual runs)
 
@@ -98,22 +99,33 @@ if (dryRun) {
 }
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const chatId = process.env.TELEGRAM_CHAT_ID;
-if (!token || !chatId) {
+const chatIds = (process.env.TELEGRAM_CHAT_ID || "")
+  .split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
+if (!token || chatIds.length === 0) {
   console.error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set to send a real reminder.");
   process.exit(1);
 }
 
-const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ chat_id: chatId, text: message }),
-});
+let anyFailed = false;
+for (const chatId of chatIds) {
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text: message }),
+  });
 
-if (!response.ok) {
-  const body = await response.text();
-  console.error(`Telegram API error (${response.status}): ${body}`);
-  process.exit(1);
+  if (!response.ok) {
+    const body = await response.text();
+    console.error(`Telegram API error for chat ${chatId} (${response.status}): ${body}`);
+    anyFailed = true;
+    continue;
+  }
+
+  console.log(`Sent to ${chatId}:`, message);
 }
 
-console.log("Sent:", message);
+if (anyFailed) {
+  process.exit(1);
+}

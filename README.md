@@ -41,6 +41,22 @@ tasks) can be added later following the same pattern.
 Once secrets are set, no further action is needed — it runs automatically
 every night.
 
+## Adding another recipient
+
+The same bot can message multiple people — no need to create a second bot.
+
+1. Have the other person open Telegram, search for your bot's exact
+   username, open it, and send it any message (e.g. `hi`).
+2. Visit `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` again — their
+   chat should now show up too, with their own `"chat":{"id":...}`.
+3. Edit the `TELEGRAM_CHAT_ID` repo secret to hold **both** IDs separated by
+   a comma, e.g. `111111111,222222222` (Settings → Secrets and variables →
+   Actions → click `TELEGRAM_CHAT_ID` → Update).
+4. Test with `workflow_dispatch` (`dry_run` unchecked) to confirm both
+   people receive the message.
+
+Repeat for as many people as you want on the list.
+
 ## Known limitations
 
 - **The schedule only covers 2026.** When the city publishes next year's
