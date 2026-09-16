@@ -1,0 +1,38 @@
+name: Garbage day reminder
+
+on:
+  schedule:
+    # 9 PM America/New_York is 01:00 UTC during EDT and 02:00 UTC during EST.
+    # Both are scheduled; the script only sends when the current NY hour is
+    # actually ~21:00, so only one of these two firings ever sends a message.
+    - cron: "0 1 * * *"
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the message instead of sending it"
+        type: boolean
+        default: false
+      date_override:
+        description: "Override 'today' as YYYY-MM-DD (for testing a specific date)"
+        type: string
+        default: ""
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send reminder
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FAKE_TODAY: ${{ github.event.inputs.date_override }}
+          SKIP_TIME_WINDOW_CHECK: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            node scripts/send-garbage-reminder.mjs --dry-run
+          else
+            node scripts/send-garbage-reminder.mjs
+          fi
