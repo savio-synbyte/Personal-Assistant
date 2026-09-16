@@ -47,13 +47,11 @@ every night.
   calendar, transcribe it the same way into
   `data/garbage-schedule-2027.json` (same `schedule`/`_legend` shape) — the
   script automatically picks the file matching the current year.
-- **A few dates were harder to pin down exactly** from the source PDF: the
-  precise day for **Bagged Leaves (B/L)** and **Bulk Trash (B/T)** in a
-  couple of weeks (early April, mid-November, mid-December), and one
-  **Newspaper/Cardboard (N/C)** entry on Oct 1. These are minor,
-  infrequent categories — worth a quick double-check against the city
-  calendar the first time each comes up. The weekly Household Garbage (G),
-  Commingle (C), and Saturday Drop-off (S/D) dates are solid.
+- Every date in `data/garbage-schedule-2026.json` was cross-checked directly
+  against the city's color-coded calendar image (not just the flattened PDF
+  text), including every holiday-adjacent week where a route shifts a day
+  (e.g. Election Day, Nov 3, bumps that week's Household Garbage from
+  Tuesday to Wednesday).
 - iMessage isn't used here: it can only be sent from macOS/iOS, and this
   runs from GitHub's cloud runners. Telegram was chosen instead since it
   has an open API and delivers to your phone just as fast.
