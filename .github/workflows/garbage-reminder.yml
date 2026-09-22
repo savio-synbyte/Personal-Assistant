@@ -2,12 +2,12 @@ name: Garbage day reminder
 
 on:
   schedule:
-    # 23:00 UTC is ~7pm EDT / 6pm EST. GitHub doesn't guarantee scheduled
+    # 21:00 UTC is 5pm EDT / 4pm EST. GitHub doesn't guarantee scheduled
     # workflows fire at the exact minute - delays of several hours happen,
-    # especially under load - so this picks an early-evening UTC time with
-    # a wide buffer before NY midnight, keeping "tomorrow" correct even if
-    # the actual run lands hours late.
-    - cron: "0 23 * * *"
+    # especially under load - so this picks a time with a wide buffer
+    # before NY midnight, keeping "tomorrow" correct even if the actual
+    # run lands hours late.
+    - cron: "0 21 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

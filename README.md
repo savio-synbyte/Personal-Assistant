@@ -13,7 +13,7 @@ tasks) can be added later following the same pattern.
 - `scripts/send-garbage-reminder.mjs` checks tomorrow's date against that
   file and, if something is scheduled, sends a Telegram message.
 - `.github/workflows/garbage-reminder.yml` runs that script nightly, targeting
-  early evening America/New_York, via GitHub Actions (no server to host).
+  5:00 PM America/New_York, via GitHub Actions (no server to host).
   GitHub doesn't guarantee scheduled workflows fire at the exact minute (it
   can run late, sometimes by hours, especially under load), so exact
   delivery time can vary — the cron time was chosen with a wide buffer
