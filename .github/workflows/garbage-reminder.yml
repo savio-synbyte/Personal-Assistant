@@ -1,13 +1,11 @@
 name: Garbage day reminder
 
 on:
-  schedule:
-    # 21:00 UTC is 5pm EDT / 4pm EST. GitHub doesn't guarantee scheduled
-    # workflows fire at the exact minute - delays of several hours happen,
-    # especially under load - so this picks a time with a wide buffer
-    # before NY midnight, keeping "tomorrow" correct even if the actual
-    # run lands hours late.
-    - cron: "0 21 * * *"
+  # No `schedule:` trigger here on purpose: GitHub's own cron proved
+  # unreliable for this repo (observed delays of 4+ hours, sometimes not
+  # firing within a day at all). Instead, an external cron service (see
+  # README) calls this workflow's `workflow_dispatch` REST endpoint daily -
+  # that path has been fast and reliable every time it's been tested.
   workflow_dispatch:
     inputs:
       dry_run:

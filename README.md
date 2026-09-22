@@ -12,13 +12,15 @@ tasks) can be added later following the same pattern.
   lookup.
 - `scripts/send-garbage-reminder.mjs` checks tomorrow's date against that
   file and, if something is scheduled, sends a Telegram message.
-- `.github/workflows/garbage-reminder.yml` runs that script nightly, targeting
-  5:00 PM America/New_York, via GitHub Actions (no server to host).
-  GitHub doesn't guarantee scheduled workflows fire at the exact minute (it
-  can run late, sometimes by hours, especially under load), so exact
-  delivery time can vary — the cron time was chosen with a wide buffer
-  before midnight NY time so "tomorrow" is still calculated correctly even
-  when that happens.
+- `.github/workflows/garbage-reminder.yml` runs that script via GitHub
+  Actions (no server to host) — but only on-demand (`workflow_dispatch`),
+  not on GitHub's own `schedule:` trigger. GitHub's scheduled-workflow timer
+  proved unreliable for this repo (observed delays of 4+ hours, sometimes
+  not firing at all within a day), while manually/API-triggered runs have
+  been fast and reliable every time. So the *scheduling* is handled by an
+  external service instead (see setup step 5 below), which simply calls
+  this workflow's `workflow_dispatch` REST endpoint once a day — GitHub
+  Actions is only responsible for *executing* the job, not deciding when.
 
 ## One-time setup
 
@@ -34,7 +36,7 @@ tasks) can be added later following the same pattern.
    - In GitHub: Settings → Secrets and variables → Actions → New repository
      secret.
    - Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` with the values above.
-4. **Test it**
+4. **Test it manually first**
    - Go to the Actions tab → "Garbage day reminder" → "Run workflow".
    - Tick `dry_run` first to confirm it logs the right message without
      sending.
@@ -42,9 +44,33 @@ tasks) can be added later following the same pattern.
      message arrives.
    - Use `date_override` (e.g. `2026-01-19`) to test a specific date without
      waiting for it.
+5. **Set up the external daily trigger** (this is what actually makes it
+   run automatically every night — GitHub's own scheduler is intentionally
+   not used, see above):
+   - Create a GitHub **fine-grained personal access token**: GitHub →
+     Settings → Developer settings → Personal access tokens → Fine-grained
+     tokens → Generate new token. Scope it to **only** this repository
+     (`savio-synbyte/Personal-Assistant`), and under Repository permissions
+     grant **Actions: Read and write**. Copy the token.
+   - Sign up for a free account at **cron-job.org** (or any similar HTTP
+     cron service).
+   - Create a new cron job there:
+     - **URL**:
+       `https://api.github.com/repos/savio-synbyte/Personal-Assistant/actions/workflows/garbage-reminder.yml/dispatches`
+     - **Method**: `POST`
+     - **Headers**: `Authorization: Bearer <your token>`,
+       `Accept: application/vnd.github+json`,
+       `Content-Type: application/json`
+     - **Body**: `{"ref":"claude/garbage-day-reminders-37x3wp"}`
+     - **Schedule**: daily at 5:00 PM, timezone `America/New_York` (the
+       service handles the EDT/EST daylight-saving shift automatically —
+       no need to update this twice a year).
+   - Use the service's "Run now" / "Test" button once to confirm the whole
+     chain works, then check this repo's Actions tab for a new run.
 
-Once secrets are set, no further action is needed — it runs automatically
-every night.
+Once secrets, the token, and the external cron job are all set, no further
+action is needed — it runs automatically every night, independent of GitHub's
+own (unreliable) scheduler and independent of this chat.
 
 ## Adding another recipient
 
