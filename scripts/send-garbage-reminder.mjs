@@ -6,7 +6,14 @@
 //   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID  - required unless --dry-run
 //                                            (TELEGRAM_CHAT_ID may be a comma-separated list to notify several people)
 //   FAKE_TODAY=YYYY-MM-DD                 - override "today" for testing
-//   SKIP_TIME_WINDOW_CHECK=1              - bypass the ~9pm ET guard (used by manual runs)
+//
+// Note: this always sends (if something's scheduled) whenever it runs - it
+// does NOT check that it's currently evening. GitHub doesn't guarantee
+// scheduled workflows fire at the exact minute (delays of hours happen,
+// especially under load), so gating on a tight time-of-day window caused
+// every real scheduled run to silently skip sending. The workflow's cron
+// picks an evening UTC time with a wide buffer before NY midnight so
+// "tomorrow" stays correct even if GitHub runs it late.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -14,8 +21,6 @@ import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const NY_TIME_ZONE = "America/New_York";
-const TARGET_HOUR_24 = 21; // 9 PM local
-const HOUR_WINDOW = 1; // tolerate the hour on either side of the target
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
@@ -26,8 +31,6 @@ function nyDateParts(date) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
   });
   const parts = Object.fromEntries(
     formatter.formatToParts(date).map((p) => [p.type, p.value])
@@ -36,7 +39,6 @@ function nyDateParts(date) {
     year: Number(parts.year),
     month: Number(parts.month),
     day: Number(parts.day),
-    hour: Number(parts.hour === "24" ? "0" : parts.hour),
   };
 }
 
@@ -53,17 +55,9 @@ function addDays(year, month, day, delta) {
 let today;
 if (process.env.FAKE_TODAY) {
   const [y, m, d] = process.env.FAKE_TODAY.split("-").map(Number);
-  today = { year: y, month: m, day: d, hour: TARGET_HOUR_24 };
+  today = { year: y, month: m, day: d };
 } else {
   today = nyDateParts(new Date());
-}
-
-const skipWindowCheck = dryRun || process.env.FAKE_TODAY || process.env.SKIP_TIME_WINDOW_CHECK === "1";
-if (!skipWindowCheck && Math.abs(today.hour - TARGET_HOUR_24) > HOUR_WINDOW) {
-  console.log(
-    `Current NY hour (${today.hour}) is outside the ~${TARGET_HOUR_24}:00 send window; exiting quietly.`
-  );
-  process.exit(0);
 }
 
 const tomorrow = addDays(today.year, today.month, today.day, 1);
