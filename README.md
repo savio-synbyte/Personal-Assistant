@@ -17,10 +17,11 @@ tasks) can be added later following the same pattern.
   not on GitHub's own `schedule:` trigger. GitHub's scheduled-workflow timer
   proved unreliable for this repo (observed delays of 4+ hours, sometimes
   not firing at all within a day), while manually/API-triggered runs have
-  been fast and reliable every time. So the *scheduling* is handled by an
-  external service instead (see setup step 5 below), which simply calls
-  this workflow's `workflow_dispatch` REST endpoint once a day — GitHub
-  Actions is only responsible for *executing* the job, not deciding when.
+  been fast and reliable every time. So the *scheduling* is handled by
+  `api/trigger-reminder.js`, a small Vercel serverless function on a
+  Vercel Cron Job (see setup step 5 below) that simply calls this
+  workflow's `workflow_dispatch` REST endpoint once a day — GitHub Actions
+  is only responsible for *executing* the job, not deciding when.
 
 ## One-time setup
 
@@ -44,31 +45,34 @@ tasks) can be added later following the same pattern.
      message arrives.
    - Use `date_override` (e.g. `2026-01-19`) to test a specific date without
      waiting for it.
-5. **Set up the external daily trigger** (this is what actually makes it
-   run automatically every night — GitHub's own scheduler is intentionally
-   not used, see above):
+5. **Set up the Vercel-hosted daily trigger** (this is what actually makes
+   it run automatically every night — GitHub's own scheduler is
+   intentionally not used, see above):
    - Create a GitHub **fine-grained personal access token**: GitHub →
      Settings → Developer settings → Personal access tokens → Fine-grained
      tokens → Generate new token. Scope it to **only** this repository
      (`savio-synbyte/Personal-Assistant`), and under Repository permissions
-     grant **Actions: Read and write**. Copy the token.
-   - Sign up for a free account at **cron-job.org** (or any similar HTTP
-     cron service).
-   - Create a new cron job there:
-     - **URL**:
-       `https://api.github.com/repos/savio-synbyte/Personal-Assistant/actions/workflows/garbage-reminder.yml/dispatches`
-     - **Method**: `POST`
-     - **Headers**: `Authorization: Bearer <your token>`,
-       `Accept: application/vnd.github+json`,
-       `Content-Type: application/json`
-     - **Body**: `{"ref":"claude/garbage-day-reminders-37x3wp"}`
-     - **Schedule**: daily at 5:00 PM, timezone `America/New_York` (the
-       service handles the EDT/EST daylight-saving shift automatically —
-       no need to update this twice a year).
-   - Use the service's "Run now" / "Test" button once to confirm the whole
-     chain works, then check this repo's Actions tab for a new run.
+     grant **Actions: Read and write**. Copy the token — this is the only
+     part of this whole setup that has to be done by hand, since generating
+     it requires your own GitHub login.
+   - A Vercel project (`personal-assistant-reminders`, free Hobby tier) is
+     already created and linked to this repo, and deploys automatically on
+     every push to this branch. It hosts `api/trigger-reminder.js`, which
+     `vercel.json` schedules via a Vercel Cron Job at `0 21 * * *` UTC
+     (5pm EDT / 4pm EST — Vercel Cron, like GitHub's, is UTC-only with no
+     timezone support, so unlike the Telegram-side timing this one *does*
+     need a manual 1-hour nudge in `vercel.json` around early
+     November/March for daylight saving).
+   - Add the token from the first step as a Vercel project environment
+     variable named `GITHUB_DISPATCH_TOKEN` (Production target) — either
+     hand it to Claude to set via the Vercel API, or add it yourself in the
+     Vercel dashboard → this project → Settings → Environment Variables.
+   - Redeploy (or wait for the next push) so the function picks up the new
+     env var, then hit the deployed `/api/trigger-reminder` URL directly (or
+     use Vercel's dashboard "Run" button on the cron job) to confirm it
+     dispatches the GitHub workflow and a Telegram message arrives.
 
-Once secrets, the token, and the external cron job are all set, no further
+Once secrets, the token, and the Vercel env var are all set, no further
 action is needed — it runs automatically every night, independent of GitHub's
 own (unreliable) scheduler and independent of this chat.
 
